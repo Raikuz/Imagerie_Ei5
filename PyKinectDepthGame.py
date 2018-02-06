@@ -17,6 +17,8 @@ if sys.hexversion >= 0x03000000:
 else:
     import thread
 
+i = 0
+
 # colors for drawing different bodies 
 SKELETON_COLORS = [pygame.color.THECOLORS["red"],
                     pygame.color.THECOLORS["blue"], 
@@ -68,6 +70,7 @@ class depthRuntime(object):
 
 
 	def run(self):
+		global i
         # -------- Main Program Loop -----------
 		while not self._done:
             # --- Main event loop
@@ -85,9 +88,11 @@ class depthRuntime(object):
 
 			self._screen.blit(self._frame_surface, (0,0))
 			pygame.display.update()
-
+			
             # --- Go ahead and update the screen with what we've drawn.
 			pygame.display.flip()
+			pygame.image.save(self._screen, "EchantillonPierre/screenshot"+str(i)+".jpeg")
+			i = i + 1
 
             # --- Limit to 60 frames per second
 			self._clock.tick(60)
