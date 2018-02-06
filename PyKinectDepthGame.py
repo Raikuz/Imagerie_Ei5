@@ -1,6 +1,7 @@
 import os
 os.system('python -m pip install -r requirements.txt')
 
+from classifier import classifier_homemade
 from pykinect2 import PyKinectV2
 from pykinect2.PyKinectV2 import *
 from pykinect2 import PyKinectRuntime
@@ -11,9 +12,7 @@ import pygame
 import sys
 import numpy as np
 
-#import classifier
-from sklearn.neighbors.nearest_centroid import NearestCentroid
-import glob
+
 
 if sys.hexversion >= 0x03000000:
     import _thread as thread
