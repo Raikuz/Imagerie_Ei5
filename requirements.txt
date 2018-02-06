@@ -5,3 +5,9 @@ pygame==1.9.3
 pykinect2==0.1.0
 sklearn==0.0
 scipy==1.0.0
+Pillow==5.0.0
+six==1.11.0
+cycler==0.10.0
+python-dateuil==2.6.1
+pyparsing==2.2.0
+pytz==2017.3
