@@ -15,7 +15,9 @@ import cv2
 from scipy import spatial
 from scipy.spatial import ConvexHull
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 import glob
+from threading import Thread
 from PIL import Image
 
 if sys.hexversion >= 0x03000000:
@@ -23,16 +25,21 @@ if sys.hexversion >= 0x03000000:
 else:
     import thread
 
-# colors for drawing different bodies 
-SKELETON_COLORS = [pygame.color.THECOLORS["red"],
-                pygame.color.THECOLORS["blue"], 
-                pygame.color.THECOLORS["green"],
-                pygame.color.THECOLORS["orange"], 
-                pygame.color.THECOLORS["purple"], 
-                pygame.color.THECOLORS["yellow"], 
-                pygame.color.THECOLORS["violet"]]
+hullSizeRock = 0
+hullSizePaper = 0
+hullSizeScisors = 0
 
+perimeterRock = 0
+perimeterPaper = 0
+perimeterScisors = 0
+def diplayingPlot():
+		plt.show()
 
+def startDisplay():
+		t.start()
+	
+t= Thread(target=diplayingPlot)
+		
 class depthRuntime(object):
 	def __init__(self):
 			pygame.init()
@@ -59,8 +66,18 @@ class depthRuntime(object):
 			self._screen = pygame.display.set_mode((self._kinect.depth_frame_desc.Width, self._kinect.depth_frame_desc.Height), pygame.HWSURFACE|pygame.DOUBLEBUF|pygame.RESIZABLE, 32)
 
 			pygame.display.set_caption("Kinect for Windows v2 depth")
-            
+     
+	
+	 
 	def classifier_homemade(self):
+			global hullSizeRock
+			global hullSizePaper
+			global hullSizeScisors 
+
+			global perimeterRock 
+			global perimeterPaper 
+			global perimeterScisors
+			
 			filelistCisor = glob.glob('EchantillonCiseaux/*.png')
 			filelistPaper = glob.glob('EchantillonPapier/*.png')
 			filelistRock = glob.glob('EchantillonPierre/*.png')
@@ -69,25 +86,45 @@ class depthRuntime(object):
 			npArrayPaper = np.array([np.array(Image.open(fname)) for fname in filelistPaper])
 			npArrayRock = np.array([np.array(Image.open(fname)) for fname in filelistRock])
 			
-			print("------------ROOOOOOOOOOOOCK------------")
+			listHullRock  = []
+			listHullPaper  = []
+			listHullScisors = []
+			listPeriRock  = []
+			listPeriPaper  = []
+			listPeriScisors = []
+			
 			for arrayrock in npArrayRock:
 				hullSize, perimeter = self.get_feature(arrayrock)
-				#plt.scatter(hullSize,perimeter,color="Grey")
+				listHullRock.append(hullSize)
+				listPeriRock.append(perimeter)
+				plt.scatter(hullSize,perimeter,color="Grey")
 				#print(str(hullSize)+" / "+str(perimeter))
 			
-			print("------------SCIIIIISOOOOORS------------")
 			for arrayscisors in npArrayCisor:
 				hullSize, perimeter = self.get_feature(arrayscisors)
-				#plt.scatter(hullSize,perimeter,color="Red")
+				listHullScisors.append(hullSize)
+				listPeriScisors.append(perimeter)
+				plt.scatter(hullSize,perimeter,color="Red")
 				#print(str(hullSize)+" / "+str(perimeter))
-			
-			print("------------PAAAAAAPEEEEEER------------")			
+					
 			for arraypaper in npArrayPaper:
-				hullSize, perimeter = self.get_feature(arraypaper)
-				#plt.scatter(hullSize,perimeter,color="Green")
-				print(str(hullSize)+" / "+str(perimeter))
+				hullSize, perimeter  = self.get_feature(arraypaper)
+				listHullPaper.append(hullSize)
+				listPeriPaper.append(perimeter)
+				plt.scatter(hullSize,perimeter,color="Green")
+				#print(str(hullSize)+" / "+str(perimeter)+" / "+str(fourier))
 			
-			plt.show()
+			hullSizeRock = np.mean(listHullRock)
+			hullSizePaper = np.mean(listHullPaper)
+			hullSizeScisors = np.mean(listHullScisors)
+
+			perimeterRock = np.mean(listPeriRock)
+			perimeterPaper = np.mean(listPeriPaper)
+			perimeterScisors = np.mean(listPeriScisors)
+			
+			plt.scatter(hullSizeRock,perimeterRock,color="Grey", edgecolor='b')
+			plt.scatter(hullSizePaper,perimeterPaper,color="Green", edgecolor='b')
+			plt.scatter(hullSizeScisors,perimeterScisors,color="Red", edgecolor='b')
 			
 	def get_feature(self, image):
 			imageClean = image.flatten()
@@ -105,7 +142,6 @@ class depthRuntime(object):
 			image = np.uint8(new_f8)
 			#self.classifier_homemade(new_f8)
 			frame8bit=np.dstack((image,image,image))
-			
 			address = self._kinect.surface_as_array(target_surface.get_buffer())
 			ctypes.memmove(address, frame8bit.ctypes.data, frame8bit.size)
 			del address
@@ -145,6 +181,7 @@ class depthRuntime(object):
 
 
 __main__ = "Kinect v2 depth"
-game =depthRuntime();
+game = depthRuntime();
 game.run();
+
 
