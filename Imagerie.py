@@ -19,6 +19,8 @@ from mpl_toolkits.mplot3d import Axes3D
 import glob
 from threading import Thread
 from PIL import Image
+import pylab
+from matplotlib.backends.backend_agg import FigureCanvasAgg
 
 if sys.hexversion >= 0x03000000:
     import _thread as thread
@@ -32,14 +34,7 @@ hullSizeScisors = 0
 perimeterRock = 0
 perimeterPaper = 0
 perimeterScisors = 0
-def diplayingPlot():
-		plt.show()
-
-def startDisplay():
-		t.start()
 	
-t= Thread(target=diplayingPlot)
-		
 class depthRuntime(object):
 	def __init__(self):
 			pygame.init()
@@ -66,10 +61,8 @@ class depthRuntime(object):
 			self._screen = pygame.display.set_mode((self._kinect.depth_frame_desc.Width, self._kinect.depth_frame_desc.Height), pygame.HWSURFACE|pygame.DOUBLEBUF|pygame.RESIZABLE, 32)
 
 			pygame.display.set_caption("Kinect for Windows v2 depth")
-     
-	
-	 
-	def classifier_homemade(self):
+
+	def diplayingPlot(self, ax):
 			global hullSizeRock
 			global hullSizePaper
 			global hullSizeScisors 
@@ -93,27 +86,27 @@ class depthRuntime(object):
 			listPeriPaper  = []
 			listPeriScisors = []
 			
+			print("-----CHARGEMENT PIERRE-----")
 			for arrayrock in npArrayRock:
 				hullSize, perimeter = self.get_feature(arrayrock)
 				listHullRock.append(hullSize)
 				listPeriRock.append(perimeter)
-				plt.scatter(hullSize,perimeter,color="Grey")
-				#print(str(hullSize)+" / "+str(perimeter))
-			
+				ax.scatter(hullSize,perimeter,color="Grey")
+				
+			print("-----CHARGEMENT CISEAUX-----")
 			for arrayscisors in npArrayCisor:
 				hullSize, perimeter = self.get_feature(arrayscisors)
 				listHullScisors.append(hullSize)
 				listPeriScisors.append(perimeter)
-				plt.scatter(hullSize,perimeter,color="Red")
-				#print(str(hullSize)+" / "+str(perimeter))
-					
+				ax.scatter(hullSize,perimeter,color="Red")
+				
+			print("-----CHARGEMENT PAPIER-----")
 			for arraypaper in npArrayPaper:
 				hullSize, perimeter  = self.get_feature(arraypaper)
 				listHullPaper.append(hullSize)
 				listPeriPaper.append(perimeter)
-				plt.scatter(hullSize,perimeter,color="Green")
-				#print(str(hullSize)+" / "+str(perimeter)+" / "+str(fourier))
-			
+				ax.scatter(hullSize,perimeter,color="Green")
+				
 			hullSizeRock = np.mean(listHullRock)
 			hullSizePaper = np.mean(listHullPaper)
 			hullSizeScisors = np.mean(listHullScisors)
@@ -121,17 +114,15 @@ class depthRuntime(object):
 			perimeterRock = np.mean(listPeriRock)
 			perimeterPaper = np.mean(listPeriPaper)
 			perimeterScisors = np.mean(listPeriScisors)
-			
-			plt.scatter(hullSizeRock,perimeterRock,color="Grey", edgecolor='b')
-			plt.scatter(hullSizePaper,perimeterPaper,color="Green", edgecolor='b')
-			plt.scatter(hullSizeScisors,perimeterScisors,color="Red", edgecolor='b')
-			
+				
+
 	def get_feature(self, image):
 			imageClean = image.flatten()
 			_ ,contours, _ = cv2.findContours(imageClean,cv2.RETR_LIST,cv2.CHAIN_APPROX_NONE)
 			hull = [cv2.convexHull(cnt) for cnt in contours]
 			perimeter = [cv2.arcLength(cnt,True) for cnt in contours]
 			return len(hull), np.sum(perimeter)
+			
             
 	def draw_depth_frame(self, frame, target_surface):
 			if frame is None:  # some usb hub do not provide the depth image. it works with Kinect studio though
@@ -150,8 +141,15 @@ class depthRuntime(object):
 
 		
 	def run(self):
-			self.classifier_homemade()
     # -------- Main Program Loop -----------
+			fig = pylab.figure(figsize=[4, 4],dpi=100,)
+			ax = fig.gca()
+			self.diplayingPlot(ax)
+			canvas = FigureCanvasAgg(fig)
+			canvas.draw()
+			renderer = canvas.get_renderer()
+			raw_data = renderer.tostring_rgb()
+			size = canvas.get_width_height()
 			while not self._done:
         # --- Main event loop
 					for event in pygame.event.get(): # User did something
@@ -159,7 +157,7 @@ class depthRuntime(object):
 									self._done = True # Flag that we are done so we exit this loop
 
 							elif event.type == pygame.VIDEORESIZE: # window resized
-									self._screen = pygame.display.set_mode(event.dict['size'], pygame.HWSURFACE|pygame.DOUBLEBUF|pygame.RESIZABLE, 32)
+									self._screen = pygame.display.set_mode((1000,400), pygame.HWSURFACE|pygame.DOUBLEBUF|pygame.RESIZABLE, 32)
         # --- Getting frames and drawing  
 					if self._kinect.has_new_depth_frame():
 							frame = self._kinect.get_last_depth_frame()
@@ -167,6 +165,8 @@ class depthRuntime(object):
 							frame = None
 
 					self._screen.blit(self._frame_surface, (0,0))
+					surf = pygame.image.fromstring(raw_data, size, "RGB")
+					self._screen.blit(surf, (610,0))
 					pygame.display.update()
 
         # --- Go ahead and update the screen with what we've drawn.
