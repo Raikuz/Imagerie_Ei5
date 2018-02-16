@@ -1,5 +1,5 @@
 import os
-os.system('python -m pip install -r requirements.txt')
+os.system('pip install -r requirements.txt')
 
 from pykinect2 import PyKinectV2
 from pykinect2.PyKinectV2 import *
@@ -13,14 +13,12 @@ import numpy as np
 import scipy
 import math
 import cv2
-from scipy import spatial
-from scipy.spatial import ConvexHull
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import glob
-from threading import Thread
 from PIL import Image
 import pylab
+import copy
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 
 if sys.hexversion >= 0x03000000:
@@ -61,7 +59,7 @@ class depthRuntime(object):
 			self._infoObject = pygame.display.Info()
 			self._screen = pygame.display.set_mode((self._kinect.depth_frame_desc.Width, self._kinect.depth_frame_desc.Height), pygame.HWSURFACE|pygame.DOUBLEBUF|pygame.RESIZABLE, 32)
 
-			pygame.display.set_caption("Kinect for Windows v2 depth")
+			pygame.display.set_caption("JanKenPon Recognition !!!")
 
 	def diplayingPlot(self, ax):
 			global hullSizeRock
@@ -71,6 +69,8 @@ class depthRuntime(object):
 			global perimeterRock 
 			global perimeterPaper 
 			global perimeterScisors
+			
+			print("-----CHARGEMENT DE LA BASE DE DONNEES-----")
 			
 			filelistCisor = glob.glob('EchantillonCiseaux/*.png')
 			filelistPaper = glob.glob('EchantillonPapier/*.png')
@@ -87,26 +87,21 @@ class depthRuntime(object):
 			listPeriPaper  = []
 			listPeriScisors = []
 			
-			print("-----CHARGEMENT PIERRE-----")
+			
 			for arrayrock in npArrayRock:
 				hullSize, perimeter = self.get_feature(arrayrock)
 				listHullRock.append(hullSize)
 				listPeriRock.append(perimeter)				
 				ax.scatter(hullSize,perimeter,color="Grey")
-				
-			print("-----CHARGEMENT CISEAUX-----")
+			
 			for arrayscisors in npArrayCisor:
 				hullSize, perimeter = self.get_feature(arrayscisors)
 				listHullScisors.append(hullSize)
 				listPeriScisors.append(perimeter)
 				ax.scatter(hullSize,perimeter,color="Red")
 				
-			i = 0
-			print("-----CHARGEMENT PAPIER-----")
 			for arraypaper in npArrayPaper:
 				hullSize, perimeter  = self.get_feature(arraypaper)
-				i = i + 1
-				print("Index "+str(i)+": "+str(hullSize)+" / "+str(perimeter)) 
 				listHullPaper.append(hullSize)
 				listPeriPaper.append(perimeter)
 				ax.scatter(hullSize,perimeter,color="Green")
@@ -118,10 +113,12 @@ class depthRuntime(object):
 			perimeterRock = np.mean(listPeriRock)
 			perimeterPaper = np.mean(listPeriPaper)
 			perimeterScisors = np.mean(listPeriScisors)
-			
+			print("-----CHARGEMENT TERMINE-----")
 			ax.scatter(hullSizeRock,perimeterRock,color="Grey",edgecolor='b')
 			ax.scatter(hullSizePaper,perimeterPaper,color="Green",edgecolor='b')
 			ax.scatter(hullSizeScisors,perimeterScisors,color="Red",edgecolor='b')
+			
+			
 				
 
 	def get_feature(self, image):
@@ -135,11 +132,10 @@ class depthRuntime(object):
 				try:
 					hull = cv2.convexHull(cnt,returnPoints = False)
 					perimeter = cv2.arcLength(cnt,True)
-					#area = cv2.contourArea(cnt)
 				except IndexError:
-					print("Rien à la camera")
+					pass
 			except ValueError:
-				print("Erreur Valeur")
+				pass
 			
 
 			
@@ -172,15 +168,15 @@ class depthRuntime(object):
 		rockComp = abs(x - hullSizeRock) + abs(y - perimeterRock) #math.sqrt( math.pow( x - hullSizeRock ,2) + math.pow( y - perimeterRock,2) )
 		paperComp = abs(x - hullSizePaper) + abs(y - perimeterPaper) #math.sqrt( math.pow( x - hullSizePaper ,2) + math.pow( y - perimeterPaper,2) )
 		#print("S: "+str(scisorsComp)+" / R: "+str(rockComp)+" / P: "+str(paperComp))
-		
-		if scisorsComp < rockComp and scisorsComp < paperComp:
-			shape = "Ciseaux"
-		elif rockComp < scisorsComp and rockComp < paperComp:
-			shape = "Pierre"
-		elif paperComp < rockComp and paperComp < scisorsComp:
-			shape = "Papier"
+		if x > 10 and y > 10:
+			if scisorsComp < rockComp and scisorsComp < paperComp:
+				shape = "Ciseaux"
+			elif rockComp < scisorsComp and rockComp < paperComp:
+				shape = "Pierre"
+			elif paperComp < rockComp and paperComp < scisorsComp:
+				shape = "Papier"
 		else:
-			shape = "Defaut"
+			shape = "Defaut"	
 		
 		
 		return shape, x, y
@@ -193,7 +189,6 @@ class depthRuntime(object):
 			ax = fig.gca()
 			self.diplayingPlot(ax)
 			canvas = FigureCanvasAgg(fig)
-			canvasOrigin = canvas
 			canvas.draw()
 			
 			size = canvas.get_width_height()
@@ -212,9 +207,14 @@ class depthRuntime(object):
 							frame = None
 
 					self._screen.blit(self._frame_surface, (0,0))
-					canvas = canvasOrigin
-					print(str(x) +" "+str(y))
-					ax.scatter(x,y,color="Yellow")
+					try:
+						point.remove()
+					except:
+						pass
+					
+					if x > 10 and y > 10:
+						point = ax.scatter(x,y,color="Yellow")
+					canvas.draw()
 					renderer = canvas.get_renderer()
 					raw_data = renderer.tostring_rgb()
 					surf = pygame.image.fromstring(raw_data, size, "RGB")
@@ -234,7 +234,7 @@ class depthRuntime(object):
 			pygame.quit()
 
 
-__main__ = "Kinect v2 depth"
+__main__ = "JanKenPon Recognition !!!"
 game = depthRuntime();
 game.run();
 
