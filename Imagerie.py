@@ -127,17 +127,15 @@ class depthRuntime(object):
 	def get_feature(self, image):
 			img_gray = cv2.cvtColor(np.uint8(image),cv2.COLOR_BGR2GRAY)
 			ret, thresh = cv2.threshold(img_gray, 127, 255,0)
-			immg,contours,hierarchy = cv2.findContours(thresh,2,1)
-			
+			immg,contours,hierarchy = cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)	
 			hull = []
 			perimeter = 0
 			try:
 				cnt = max(contours, key = cv2.contourArea)
 				try:
 					hull = cv2.convexHull(cnt,returnPoints = False)
-					
-					perimeter = 0.1*cv2.arcLength(cnt,True)
-					area = cv2.contourArea(cnt)
+					perimeter = cv2.arcLength(cnt,True)
+					#area = cv2.contourArea(cnt)
 				except IndexError:
 					print("Rien à la camera")
 			except ValueError:
