@@ -61,6 +61,7 @@ class depthRuntime(object):
 
 			pygame.display.set_caption("JanKenPon Recognition !!!")
 
+	# Function that create the database and plot it in a graphic
 	def diplayingPlot(self, ax):
 			global hullSizeRock
 			global hullSizePaper
@@ -72,6 +73,7 @@ class depthRuntime(object):
 			
 			print("-----CHARGEMENT DE LA BASE DE DONNEES-----")
 			
+			# Files opening to create our database
 			filelistCisor = glob.glob('EchantillonCiseaux/*.png')
 			filelistPaper = glob.glob('EchantillonPapier/*.png')
 			filelistRock = glob.glob('EchantillonPierre/*.png')
@@ -87,7 +89,7 @@ class depthRuntime(object):
 			listPeriPaper  = []
 			listPeriScisors = []
 			
-			
+			# Centroid calculation for each image and graphic generation
 			for arrayrock in npArrayRock:
 				hullSize, perimeter = self.get_feature(arrayrock)
 				listHullRock.append(hullSize)
@@ -106,21 +108,25 @@ class depthRuntime(object):
 				listPeriPaper.append(perimeter)
 				ax.scatter(hullSize,perimeter,color="Green")
 				
+			# Those variables estimate the centroid of each shape
 			hullSizeRock = np.mean(listHullRock)
 			hullSizePaper = np.mean(listHullPaper)
 			hullSizeScisors = np.mean(listHullScisors)
-
 			perimeterRock = np.mean(listPeriRock)
 			perimeterPaper = np.mean(listPeriPaper)
 			perimeterScisors = np.mean(listPeriScisors)
+			
+			
 			print("-----CHARGEMENT TERMINE-----")
+			
+			# Here are displayed the centroids
 			ax.scatter(hullSizeRock,perimeterRock,color="Grey",edgecolor='b')
 			ax.scatter(hullSizePaper,perimeterPaper,color="Green",edgecolor='b')
 			ax.scatter(hullSizeScisors,perimeterScisors,color="Red",edgecolor='b')
 			
 			
 				
-
+	# This function calculate two features for each image
 	def get_feature(self, image):
 			img_gray = cv2.cvtColor(np.uint8(image),cv2.COLOR_BGR2GRAY)
 			ret, thresh = cv2.threshold(img_gray, 127, 255,0)
@@ -130,21 +136,19 @@ class depthRuntime(object):
 			try:
 				cnt = max(contours, key = cv2.contourArea)
 				try:
+					#Calculation of the hull size
 					hull = cv2.convexHull(cnt,returnPoints = False)
 					perimeter = cv2.arcLength(cnt,True)
 				except IndexError:
 					pass
 			except ValueError:
-				pass
-			
-
-			
+				pass			
 			return len(hull), perimeter
 		
 		
 		
 			
-            
+    # Frame processing    
 	def draw_depth_frame(self, frame, target_surface):
 			if frame is None:  # some usb hub do not provide the depth image. it works with Kinect studio though
 					return
@@ -152,7 +156,8 @@ class depthRuntime(object):
 			f8 = np.uint8(frame.clip(1,4000)/16.)
 			new_f8 = [np.uint8(255) if x > np.uint8(20) and x < np.uint8(50) else np.uint8(0) for x in f8]
 			image = np.uint8(new_f8)
-			#self.classifier_homemade(new_f8)
+			
+			# This create a third dimension to our image
 			frame8bit=np.dstack((image,image,image))
 			address = self._kinect.surface_as_array(target_surface.get_buffer())
 			ctypes.memmove(address, frame8bit.ctypes.data, frame8bit.size)
@@ -160,14 +165,17 @@ class depthRuntime(object):
 			target_surface.unlock()
 			return self.get_current_centroid(frame8bit)
        
+	# This function calculate the nearest centroid from our current image
 	def get_current_centroid(self, frame):
 		image = np.reshape(frame,(424,512,3))
 		x,y = self.get_feature(image)
 		
-		scisorsComp = abs(x - hullSizeScisors) + abs(y - perimeterScisors) #math.sqrt( math.pow( x - hullSizeScisors,2 ) + math.pow( y - perimeterScisors,2) )
-		rockComp = abs(x - hullSizeRock) + abs(y - perimeterRock) #math.sqrt( math.pow( x - hullSizeRock ,2) + math.pow( y - perimeterRock,2) )
-		paperComp = abs(x - hullSizePaper) + abs(y - perimeterPaper) #math.sqrt( math.pow( x - hullSizePaper ,2) + math.pow( y - perimeterPaper,2) )
-		#print("S: "+str(scisorsComp)+" / R: "+str(rockComp)+" / P: "+str(paperComp))
+		# Distance calculation from each centroid
+		scisorsComp = math.sqrt( math.pow( x - hullSizeScisors,2 ) + math.pow( y - perimeterScisors,2) )
+		rockComp = math.sqrt( math.pow( x - hullSizeRock ,2) + math.pow( y - perimeterRock,2) )
+		paperComp = math.sqrt( math.pow( x - hullSizePaper ,2) + math.pow( y - perimeterPaper,2) )
+
+		# Result interpretation
 		if x > 10 and y > 10:
 			if scisorsComp < rockComp and scisorsComp < paperComp:
 				shape = "Ciseaux"
