@@ -91,7 +91,7 @@ class depthRuntime(object):
 			for arrayrock in npArrayRock:
 				hullSize, perimeter = self.get_feature(arrayrock)
 				listHullRock.append(hullSize)
-				listPeriRock.append(perimeter)
+				listPeriRock.append(perimeter)				
 				ax.scatter(hullSize,perimeter,color="Grey")
 				
 			print("-----CHARGEMENT CISEAUX-----")
@@ -101,9 +101,12 @@ class depthRuntime(object):
 				listPeriScisors.append(perimeter)
 				ax.scatter(hullSize,perimeter,color="Red")
 				
+			i = 0
 			print("-----CHARGEMENT PAPIER-----")
 			for arraypaper in npArrayPaper:
 				hullSize, perimeter  = self.get_feature(arraypaper)
+				i = i + 1
+				print("Index "+str(i)+": "+str(hullSize)+" / "+str(perimeter)) 
 				listHullPaper.append(hullSize)
 				listPeriPaper.append(perimeter)
 				ax.scatter(hullSize,perimeter,color="Green")
@@ -115,6 +118,10 @@ class depthRuntime(object):
 			perimeterRock = np.mean(listPeriRock)
 			perimeterPaper = np.mean(listPeriPaper)
 			perimeterScisors = np.mean(listPeriScisors)
+			
+			ax.scatter(hullSizeRock,perimeterRock,color="Grey",edgecolor='b')
+			ax.scatter(hullSizePaper,perimeterPaper,color="Green",edgecolor='b')
+			ax.scatter(hullSizeScisors,perimeterScisors,color="Red",edgecolor='b')
 				
 
 	def get_feature(self, image):
@@ -122,18 +129,23 @@ class depthRuntime(object):
 			ret, thresh = cv2.threshold(img_gray, 127, 255,0)
 			immg,contours,hierarchy = cv2.findContours(thresh,2,1)
 			
-			area = 0
+			hull = []
 			perimeter = 0
 			try:
-				cnt = contours[0]
-				#hull = cv2.convexHull(cnt,returnPoints = False)
-				perimeter = cv2.arcLength(cnt,True)
-				area = cv2.contourArea(cnt)
-			except IndexError:
-				print("Rien à la camera")
+				cnt = max(contours, key = cv2.contourArea)
+				try:
+					hull = cv2.convexHull(cnt,returnPoints = False)
+					
+					perimeter = 0.1*cv2.arcLength(cnt,True)
+					area = cv2.contourArea(cnt)
+				except IndexError:
+					print("Rien à la camera")
+			except ValueError:
+				print("Erreur Valeur")
+			
 
 			
-			return area, perimeter
+			return len(hull), perimeter
 		
 		
 		
