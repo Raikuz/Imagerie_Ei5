@@ -11,6 +11,7 @@ import pygame
 import sys
 import numpy as np
 import scipy
+import math
 import cv2
 from scipy import spatial
 from scipy.spatial import ConvexHull
@@ -117,11 +118,25 @@ class depthRuntime(object):
 				
 
 	def get_feature(self, image):
-			imageClean = image.flatten()
-			_ ,contours, _ = cv2.findContours(imageClean,cv2.RETR_LIST,cv2.CHAIN_APPROX_NONE)
-			hull = [cv2.convexHull(cnt) for cnt in contours]
-			perimeter = [cv2.arcLength(cnt,True) for cnt in contours]
-			return len(hull), np.sum(perimeter)
+			img_gray = cv2.cvtColor(np.uint8(image),cv2.COLOR_BGR2GRAY)
+			ret, thresh = cv2.threshold(img_gray, 127, 255,0)
+			immg,contours,hierarchy = cv2.findContours(thresh,2,1)
+			
+			area = 0
+			perimeter = 0
+			try:
+				cnt = contours[0]
+				#hull = cv2.convexHull(cnt,returnPoints = False)
+				perimeter = cv2.arcLength(cnt,True)
+				area = cv2.contourArea(cnt)
+			except IndexError:
+				print("Rien à la camera")
+
+			
+			return area, perimeter
+		
+		
+		
 			
             
 	def draw_depth_frame(self, frame, target_surface):
@@ -137,18 +152,40 @@ class depthRuntime(object):
 			ctypes.memmove(address, frame8bit.ctypes.data, frame8bit.size)
 			del address
 			target_surface.unlock()
-            
-
+			return self.get_current_centroid(frame8bit)
+       
+	def get_current_centroid(self, frame):
+		image = np.reshape(frame,(424,512,3))
+		x,y = self.get_feature(image)
+		
+		scisorsComp = abs(x - hullSizeScisors) + abs(y - perimeterScisors) #math.sqrt( math.pow( x - hullSizeScisors,2 ) + math.pow( y - perimeterScisors,2) )
+		rockComp = abs(x - hullSizeRock) + abs(y - perimeterRock) #math.sqrt( math.pow( x - hullSizeRock ,2) + math.pow( y - perimeterRock,2) )
+		paperComp = abs(x - hullSizePaper) + abs(y - perimeterPaper) #math.sqrt( math.pow( x - hullSizePaper ,2) + math.pow( y - perimeterPaper,2) )
+		#print("S: "+str(scisorsComp)+" / R: "+str(rockComp)+" / P: "+str(paperComp))
+		
+		if scisorsComp < rockComp and scisorsComp < paperComp:
+			shape = "Ciseaux"
+		elif rockComp < scisorsComp and rockComp < paperComp:
+			shape = "Pierre"
+		elif paperComp < rockComp and paperComp < scisorsComp:
+			shape = "Papier"
+		else:
+			shape = "Defaut"
+		
+		
+		return shape, x, y
 		
 	def run(self):
     # -------- Main Program Loop -----------
+			myfont = pygame.font.SysFont("monospace", 30)
+			myfont.set_bold(True)
 			fig = pylab.figure(figsize=[4, 4],dpi=100,)
 			ax = fig.gca()
 			self.diplayingPlot(ax)
 			canvas = FigureCanvasAgg(fig)
+			canvasOrigin = canvas
 			canvas.draw()
-			renderer = canvas.get_renderer()
-			raw_data = renderer.tostring_rgb()
+			
 			size = canvas.get_width_height()
 			while not self._done:
         # --- Main event loop
@@ -161,12 +198,19 @@ class depthRuntime(object):
         # --- Getting frames and drawing  
 					if self._kinect.has_new_depth_frame():
 							frame = self._kinect.get_last_depth_frame()
-							self.draw_depth_frame(frame, self._frame_surface)
+							shape, x, y = self.draw_depth_frame(frame, self._frame_surface)
 							frame = None
 
 					self._screen.blit(self._frame_surface, (0,0))
+					canvas = canvasOrigin
+					print(str(x) +" "+str(y))
+					ax.scatter(x,y,color="Yellow")
+					renderer = canvas.get_renderer()
+					raw_data = renderer.tostring_rgb()
 					surf = pygame.image.fromstring(raw_data, size, "RGB")
 					self._screen.blit(surf, (610,0))
+					label = myfont.render(shape, 1, (255,255,255))
+					self._screen.blit(label, (0, 0))
 					pygame.display.update()
 
         # --- Go ahead and update the screen with what we've drawn.
